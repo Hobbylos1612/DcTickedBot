@@ -1,3 +1,4 @@
+import os
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -5,7 +6,7 @@ import asyncio
 from typing import Optional
 import discord.ui
 
-TOKEN = 'MTQ2MDE5MDIxMjM0ODE4MjYzMQ.GY38Mq.h1xx78gJe1tOEhhuk0vGnIZfK1NlFOeTfcq19A'
+TOKEN = os.getenv('DISCORD_TOKEN')
 
 TICKET_CATEGORY_NAME = "Tickets-TicketBot"
 SUPPORT_ROLE_NAME = "Staff"
