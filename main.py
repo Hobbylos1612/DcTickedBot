@@ -152,6 +152,46 @@ async def _close_ticket_logic(interaction: discord.Interaction):
 async def close(interaction: discord.Interaction):
     await _close_ticket_logic(interaction)
 
+async def _add_user_to_ticket_logic(interaction: discord.Interaction, member: discord.Member):
+    if member == bot.user:
+        await interaction.response.send_message("I cannot add myself to a ticket channel.", ephemeral=True)
+        return
+
+    if not interaction.guild:
+        await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+        return
+
+    if interaction.channel.category and interaction.channel.category.name == TICKET_CATEGORY_NAME:
+        await interaction.channel.set_permissions(member, read_messages=True, send_messages=True)
+        await interaction.response.send_message(f"{member.mention} has been added to this ticket.", ephemeral=True)
+    else:
+        await interaction.response.send_message("This command can only be used in a ticket channel.", ephemeral=True)
+
+@bot.tree.command(name="add", description="Adds a user to the current ticket channel.")
+@app_commands.describe(member="The user to add to the ticket.")
+async def add(interaction: discord.Interaction, member: discord.Member):
+    await _add_user_to_ticket_logic(interaction, member)
+
+async def _remove_user_from_ticket_logic(interaction: discord.Interaction, member: discord.Member):
+    if member == bot.user:
+        await interaction.response.send_message("I cannot remove myself from a ticket channel.", ephemeral=True)
+        return
+
+    if not interaction.guild:
+        await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+        return
+
+    if interaction.channel.category and interaction.channel.category.name == TICKET_CATEGORY_NAME:
+        await interaction.channel.set_permissions(member, overwrite=None)
+        await interaction.response.send_message(f"{member.mention} has been removed from this ticket.", ephemeral=True)
+    else:
+        await interaction.response.send_message("This command can only be used in a ticket channel.", ephemeral=True)
+
+@bot.tree.command(name="remove", description="Removes a user from the current ticket channel.")
+@app_commands.describe(member="The user to remove from the ticket.")
+async def remove(interaction: discord.Interaction, member: discord.Member):
+    await _remove_user_from_ticket_logic(interaction, member)
+
 
 
 async def _transcribe_ticket_logic(interaction: discord.Interaction):
