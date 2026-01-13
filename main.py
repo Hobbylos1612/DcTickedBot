@@ -5,10 +5,12 @@ from discord import app_commands
 import asyncio
 from typing import Optional
 import discord.ui
-
+from dotenv import load_dotenv
+load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
 TICKET_CATEGORY_NAME = "Tickets-TicketBot"
+TICKET_ARCHIVE_CATEGORY_NAME = "Ticket-Archive"
 SUPPORT_ROLE_NAME = "Staff"
 
 # Global ticket counter
@@ -29,8 +31,51 @@ class ConfirmButtonView(discord.ui.View):
             child.disabled = True
         await interaction.response.edit_message(view=self)
 
-        await interaction.followup.send("Closing ticket...")
-        await interaction.channel.delete()
+        guild = interaction.guild
+        channel = interaction.channel
+        ticket_creator_id = None
+        if channel.topic and "ID:" in channel.topic:
+            try:
+                # Extract the ID from the topic string
+                ticket_creator_id = int(channel.topic.split("ID:")[1].strip().split(")")[0])
+                ticket_creator = guild.get_member(ticket_creator_id)
+                if not ticket_creator:
+                    ticket_creator = await guild.fetch_member(ticket_creator_id)
+            except (ValueError, IndexError, discord.NotFound):
+                print(f"Could not parse or find ticket creator from channel topic: {channel.topic}")
+        
+        # Find or create archive category
+        archive_category = discord.utils.get(guild.categories, name=TICKET_ARCHIVE_CATEGORY_NAME)
+        if not archive_category:
+            archive_category = await guild.create_category(TICKET_ARCHIVE_CATEGORY_NAME)
+            
+        # Get support role
+        support_role = discord.utils.get(guild.roles, name=SUPPORT_ROLE_NAME)
+        
+        # Define overwrites for the archived channel:
+        # - Default role: No access
+        # - Support role: Read-only access
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False),
+        }
+        if support_role:
+            overwrites[support_role] = discord.PermissionOverwrite(read_messages=True, send_messages=False)
+        if ticket_creator:
+            overwrites[ticket_creator] = discord.PermissionOverwrite(read_messages=False)
+        
+        # Move channel, rename it, and update permissions
+        new_name = f"closed-{channel.name}"
+        if len(new_name) > 100:
+            new_name = new_name[:100]
+            
+        await channel.edit(
+            category=archive_category, 
+            overwrites=overwrites, 
+            name=new_name,
+            reason="Ticket closed and archived"
+        )
+        
+        await channel.send(f"This ticket is Archived.")
 
     async def on_timeout(self):
         # Disable all buttons when the view times out
@@ -130,7 +175,12 @@ async def newticket(interaction: discord.Interaction, topic: Optional[str] = Non
     if not channel_name:
         channel_name = f"ticket-{ticket_num_str}" # Fallback to a generic ticket name
 
-    ticket_channel = await guild.create_text_channel(channel_name, category=ticket_category, overwrites=overwrites)
+    ticket_channel = await guild.create_text_channel(
+        channel_name, 
+        category=ticket_category, 
+        overwrites=overwrites,
+        topic=f"Ticket created by {member.name} (ID: {member.id})"
+    )
 
     initial_message = f"Welcome {member.mention}! Your ticket"
     if topic:
