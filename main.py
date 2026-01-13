@@ -5,8 +5,6 @@ from discord import app_commands
 import asyncio
 from typing import Optional
 import discord.ui
-from dotenv import load_dotenv
-load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
 TICKET_CATEGORY_NAME = "Tickets-TicketBot"
